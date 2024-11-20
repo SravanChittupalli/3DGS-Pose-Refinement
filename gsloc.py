@@ -15,8 +15,15 @@ import matplotlib.pyplot as plt
 from public_marepo.marepo_inference import PoseEstimator
 from public_mast3r.mast3r_inference import ImageMatcher
 
+from argparse import ArgumentParser
+from public_scaffold_gs.arguments import ModelParams, PipelineParams, get_combined_args
+from public_scaffold_gs.gaussian_renderer import render, prefilter_voxel
+from public_scaffold_gs.scene.cameras import Camera
+from public_scaffold_gs.utils.system_utils import searchForMaxIteration
+from public_scaffold_gs.gaussian_splat_renderer import GaussianSplatRenderer
+
 class CameraPoseRefinement:
-    def __init__(self, encoder_path, head_network_path, transformer_path, transformer_json, scene_path, mast3r_model_path):
+    def __init__(self, encoder_path, head_network_path, transformer_path, transformer_json, scene_path, mast3r_model_path, gs_model_path):
         """
         Initializes the pose refinement pipeline with paths to required models and datasets.
         
@@ -32,6 +39,19 @@ class CameraPoseRefinement:
 
         # Instantiate the ImageMatcher model for MASt3R
         self.mast3r_model = ImageMatcher(mast3r_model_path)
+        
+        # Instantiate the Gaussian model
+        parser = ArgumentParser(description="Testing script parameters")
+        args = get_combined_args(parser)
+        model = ModelParams(parser, sentinel=True)
+        pipeline = PipelineParams(parser)
+
+        # Initialize system state (RNG)
+        dataset = model.extract(args)
+        # pipeline = pipeline.extract(args)
+
+        # Create Gaussian Splat Renderer
+        self.renderer = GaussianSplatRenderer(gs_model_path, dataset, pipeline)
 
     def rescale_keypoints(self, keypoints, original_shape, resized_shape):
         """
@@ -187,12 +207,23 @@ class CameraPoseRefinement:
         reference_pose = reference_data['pose'][0]  # Assuming reference_pose is a 3x4 matrix representing [R|t]
         # Initial pose estimation using MARePo
         initial_pose, _ = self.marepo_model.inference(query_data)
+        print("Marepo Pose: ", initial_pose)
+        
+        ############## Gaussian Splat Render ###################
+        
+        render_pkg = self.renderer.render_gauss(initial_pose[0].detach().cpu().numpy())
 
         query_image = query_data['rgb'] # (480, 640, 3)
+        
+        rendered_image = render_pkg['render'].permute(1,2,0).detach().cpu().numpy() * 255
+        rendered_image = rendered_image.astype(np.uint8)
         reference_rgbd = {
-            'rgb': reference_data['rgb'],
-            'depth': reference_data['depth']
+            'rgb': rendered_image,
+            'depth': render_pkg['depth'][0].detach().cpu().numpy()
         }
+        
+        ##########################################################
+        
         query_image_shape = query_image.shape[:2]
 
         # Find and Match Keypoints with Mast3r.
@@ -228,6 +259,7 @@ if __name__ == "__main__":
     transformer_json = "public_marepo/transformer/config/nerf_focal_12T1R_256_homo.json"
     scene_path = "public_marepo/datasets/7scenes_chess"
     mast3r_model_path = "public_mast3r/checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth"
+    gs_model_path = '/data5/GSLoc-Unofficial-Implementation/public_scaffold_gs/outputs/chess/with_sfm'
 
     # Initialize the pose refinement pipeline
     gsloc = CameraPoseRefinement(
@@ -236,7 +268,8 @@ if __name__ == "__main__":
         transformer_path,
         transformer_json,
         scene_path,
-        mast3r_model_path
+        mast3r_model_path,
+        gs_model_path
     )
 
     # Refine pose given query and reference data names
@@ -248,8 +281,8 @@ if __name__ == "__main__":
 
     # Use marepo like this
     # predicted_pose, ground_truth_pose = gsloc.marepo_model.inference(query_data)
+    
+    refined_pose = gsloc.refine_pose(query_data, reference_data)
+    # refined_rvec, refined_tvec = gsloc.refine_pose(query_data, reference_data)
 
-    refined_rvec, refined_tvec = gsloc.refine_pose(query_data, reference_data)
-
-    print("Refined Rotation Vector:", refined_rvec)
-    print("Refined Translation Vector:", refined_tvec)
+    print("Refined Pose:", refined_pose)

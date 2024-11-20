@@ -8,6 +8,9 @@ public_marepo/datasets/Cambridge_*
 public_marepo/datasets/wayspots_*
 public_marepo/datasets/pgt_*
 public_marepo/datasets/visloc_pseudo_gt_limitations
+public_scaffold_gs/data
+public_scaffold_gs/outputs
+public_scaffold_gs/tmp
 
 # Outputs.
 output/
