@@ -154,13 +154,14 @@ class OptimizationParams(ParamGroup):
 
         super().__init__(parser, "Optimization Parameters")
 
-def get_combined_args(parser : ArgumentParser):
+def get_combined_args(parser : ArgumentParser, model_path=None):
     cmdlne_string = sys.argv[1:]
     cfgfile_string = "Namespace()"
     args_cmdline = parser.parse_args(cmdlne_string)
 
     try:
-        args_cmdline.model_path = '/data5/GSLoc-Unofficial-Implementation/public_scaffold_gs/outputs/chess/gt_pose'
+        if model_path != None:
+            args_cmdline.model_path = model_path
         cfgfilepath = os.path.join(args_cmdline.model_path, "cfg_args")
         print("Looking for config file in", cfgfilepath)
         with open(cfgfilepath) as cfg_file:

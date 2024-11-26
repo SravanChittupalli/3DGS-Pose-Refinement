@@ -1,3 +1,4 @@
+import string
 import sys, os
 marepo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public_marepo')
 mast3r_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public_mast3r')
@@ -42,7 +43,7 @@ class CameraPoseRefinement:
         
         # Instantiate the Gaussian model
         parser = ArgumentParser(description="Testing script parameters")
-        args = get_combined_args(parser)
+        args = get_combined_args(parser, gs_model_path)
         model = ModelParams(parser, sentinel=True)
         pipeline = PipelineParams(parser)
 
@@ -175,7 +176,7 @@ class CameraPoseRefinement:
         relative_pose = np.hstack((R, T))  # Combine to form the 3x4 relative pose matrix
 
         # Compute the global pose of the query by multiplying the reference pose with the relative pose
-        reference_pose_h = np.vstack((reference_pose, [0, 0, 0, 1]))  # Convert reference pose to 4x4 homogeneous matrix
+        reference_pose_h = np.vstack((reference_pose))  # Convert reference pose to 4x4 homogeneous matrix
         relative_pose_h = np.vstack((relative_pose, [0, 0, 0, 1]))    # Convert relative pose to 4x4 homogeneous matrix
         query_pose_h = np.dot(reference_pose_h, relative_pose_h)       # Global pose of the query (4x4 homogeneous)
 
@@ -244,7 +245,7 @@ class CameraPoseRefinement:
         rvec, tvec = self.solve_pnp_ransac(query_kps_valid.astype(np.float32), reference_kps_3d.astype(np.float32), intrinsic_matrix)
         
         # Output Global Pose.
-        query_pose = self.global_pose(reference_pose, -rvec, -tvec/1000)
+        query_pose = self.global_pose(initial_pose[0], -rvec, -tvec/1000)
 
         return query_pose
         

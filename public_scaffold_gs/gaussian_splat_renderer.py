@@ -115,7 +115,7 @@ class GaussianSplatRenderer:
         t0 = time.time()
         voxel_visible_mask = prefilter_voxel(camera, self.gaussians, self.pipeline, self.background)
         render_pkg = render(camera, self.gaussians, self.pipeline, self.background, visible_mask=voxel_visible_mask)
-        print(render_pkg.keys())
+        # print(render_pkg.keys())
         torch.cuda.synchronize()
         t1 = time.time()
 
