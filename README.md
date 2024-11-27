@@ -122,6 +122,11 @@ To run inference with **_marepo_** on a test scene, the following components are
 
 --- 
 
+#### **Pre-trained Scaffold GS Models**
+
+All the scene models trained from SfM GT pose can be downloaded from the [Link](https://drive.google.com/drive/folders/1FC8MYRbnstP82FDq_KkoRoOOwfTKN7ip?usp=sharing).  
+Unzip `outputs.zip` and place the folder in `public_scaffold_gs` folder.
+
 ### **4. Run the Code**
 
 Run your scripts or modules as needed within the activated environment.
@@ -130,7 +135,9 @@ Run your scripts or modules as needed within the activated environment.
 python gsloc.py
 ```
 
-**Make sure all files with paths hard-coded in `gsloc.py` are properly downloaded**
+**Make sure all files with paths hard-coded in `gsloc.py` are properly downloaded**  
+
+**There might be some import errors. One of them might be from `public_scaffold_gs/gaussian_renderer/__init__.py` just change the 12th Line with your absolute library path.**
 
 ---
 

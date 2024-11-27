@@ -8,6 +8,8 @@
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
+import sys
+sys.path.append('/data5/GSLoc-Unofficial-Implementation/')
 import torch
 from einops import repeat
 
