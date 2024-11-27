@@ -40,6 +40,12 @@ cd GSLoc-Unofficial-Implementation
    ```
    cd public_scaffold_gs
    pip install submodules/diff-gaussian-rasterization
+
+   cd submodules
+   git clone https://github.com/ingra14m/diff-gaussian-rasterization-extentions.git --recursive
+   git checkout filter-depth
+   pip install -e .
+
    pip install submodules/simple-knn
    ```
 

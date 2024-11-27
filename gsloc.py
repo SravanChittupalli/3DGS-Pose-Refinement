@@ -173,6 +173,7 @@ class CameraPoseRefinement:
         if not success:
             raise RuntimeError("PnP RANSAC failed to find a solution.")
         return rvec, tvec
+    
     def global_pose(self, reference_pose, rvec, tvec):
         # Convert rvec and tvec to transformation matrix (relative transformation)
         R, _ = cv2.Rodrigues(rvec)  # Convert rotation vector to rotation matrix (3x3)
@@ -202,7 +203,7 @@ class CameraPoseRefinement:
 
         # Initial pose estimation using MARePo
         initial_pose, _ = self.marepo_model.inference(query_data)
-        print("Marepo Pose: ", initial_pose)
+        # print("Marepo Pose: ", initial_pose)
         
         ############## Gaussian Splat Render ###################
         
@@ -240,13 +241,14 @@ class CameraPoseRefinement:
         
         # Output Global Pose.
         query_pose = self.global_pose(initial_pose, -rvec, -tvec/1000)
+        query_pose = np.vstack([query_pose, np.array([0,0,0,1])])
 
-        return query_pose
+        return torch.tensor(query_pose, dtype=torch.float32)
     
 
     def marepo_pose(self, query_data):
         initial_pose, _ = self.marepo_model.inference(query_data)
-        return initial_pose
+        return initial_pose[0]
 
     def refine_pose_using_reference(self, query_data, reference_data):
         """
@@ -287,9 +289,10 @@ class CameraPoseRefinement:
         rvec, tvec = self.solve_pnp_ransac(query_kps_valid.astype(np.float32), reference_kps_3d.astype(np.float32), intrinsic_matrix)
         
         # Output Global Pose.
-        query_pose = self.global_pose(initial_pose[0], -rvec, -tvec/1000)
+        query_pose = self.global_pose(reference_pose, -rvec, -tvec/1000)
+        query_pose = np.vstack([query_pose, np.array([0,0,0,1])])
 
-        return query_pose
+        return torch.tensor(query_pose, dtype=torch.float32)
         
 
     def inference(self, path_prefix, method="marepo"):
@@ -352,7 +355,7 @@ class CameraPoseRefinement:
             # print(f"Refined pose between {query_data_name} and {reference_data_name}: {refined_pose}")
 
             query_gt_poses.append(query_data['pose'][0])
-            refined_poses.append(refined_pose[0])
+            refined_poses.append(refined_pose)
 
             if (i+1) % 64 == 0 :
                 query_gt_poses = torch.stack(query_gt_poses)
@@ -412,6 +415,9 @@ if __name__ == "__main__":
 
 
     # TODO: Iterate over all scenes.
+
+    env_list = ["chess", "fire", "heads", 'office', "pumpkin", "redkitchen", "stairs"]
+
     path_prefix_list = [
         "public_marepo/datasets/pgt_7scenes_chess/train",
         "public_marepo/datasets/pgt_7scenes_fire/test",
@@ -422,10 +428,15 @@ if __name__ == "__main__":
         "public_marepo/datasets/pgt_7scenes_stairs/test"
     ]
 
-    # TODO: update marepo for every environments.
     # TODO: update 3dgs: path hard-coded at __init__?
-    gsloc.load_marepo(encoder_path=encoder_path, head_network_path=head_network_path, transformer_path=transformer_path, transformer_json=transformer_json, scene_path=scene_path)
+    for env in env_list:
+        path_prefix = "public_marepo/datasets/pgt_7scenes_{}/test".format(env)
+        head_network_path = "public_marepo/logs/pretrain/ace_models/7Scenes/7scenes_{}.pt".format(env)
+        scene_path = "public_marepo/datasets/pgt_7scenes_{}".format(env)
+        gs_model_path = 'public_scaffold_gs/outputs/{}/with_sfm'.format(env)
 
-    # Refine pose given query and reference data names
-    gsloc.inference(path_prefix_list[0], method="gsloc")
+        gsloc.load_marepo(encoder_path=encoder_path, head_network_path=head_network_path, transformer_path=transformer_path, transformer_json=transformer_json, scene_path=scene_path)
+
+        # Refine pose given query and reference data names
+        gsloc.inference(path_prefix_list[0], method="gsloc")
     

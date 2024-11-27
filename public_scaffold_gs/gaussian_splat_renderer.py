@@ -91,7 +91,7 @@ class GaussianSplatRenderer:
         """
         # Convert pose to camera parameters
         C2W = np.linalg.inv(pose)
-        print(C2W.shape)
+        # print(C2W.shape)
         R = C2W[:3, :3].transpose()
         T = C2W[:3, 3]
         # T[2] -= 0.5
@@ -121,14 +121,14 @@ class GaussianSplatRenderer:
 
         rendering = render_pkg["render"]
         depth_rendering = render_pkg["depth"]
-        print(f"Render time: {t1 - t0:.2f}s")
+        # print(f"Render time: {t1 - t0:.2f}s")
 
         # Save rendering
-        output_path = os.path.join('/data5/Scaffold-GS/tmp/', f'{1:05d}.png')
-        torchvision.utils.save_image(rendering, output_path)
-        output_path = os.path.join('/data5/Scaffold-GS/tmp/', f'{1:05d}_depth.png')
-        torchvision.utils.save_image(depth_rendering, output_path)
-        print(f"Saved rendering to {output_path}")
+        # output_path = os.path.join('/data5/Scaffold-GS/tmp/', f'{1:05d}.png')
+        # torchvision.utils.save_image(rendering, output_path)
+        # output_path = os.path.join('/data5/Scaffold-GS/tmp/', f'{1:05d}_depth.png')
+        # torchvision.utils.save_image(depth_rendering, output_path)
+        # print(f"Saved rendering to {output_path}")
         return render_pkg
 
 
