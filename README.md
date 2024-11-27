@@ -37,6 +37,12 @@ cd GSLoc-Unofficial-Implementation
    conda list
    ```
 
+   ```
+   cd public_scaffold_gs
+   pip install submodules/diff-gaussian-rasterization
+   pip install submodules/simple-knn
+   ```
+
 ---
 
 ## Datasets Setup

@@ -39,7 +39,7 @@ if __name__ == '__main__':
         description='Download and setup the 7Scenes dataset.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('--depth', type=str, choices=['none', 'rendered', 'calibrated'], default='calibrated',
+    parser.add_argument('--depth', type=str, choices=['none', 'rendered', 'calibrated'], default='none',
                         help='none: ignore depth maps; rendered: download depth rendered using 3D scene model (28GB); calibrated: register original depth maps to RGB')
 
     parser.add_argument('--eye', type=str, choices=['none', 'calibrated'], default='none',
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     dutil.mkdir(src_folder)
     os.chdir(src_folder)
 
-    for ds in ['stairs']:
+    for ds in ['chess', 'fire', 'heads', 'office', 'pumpkin', 'redkitchen', 'stairs']:
 
         if not os.path.exists(ds):
 
@@ -306,7 +306,7 @@ if __name__ == '__main__':
 
 
     Parallel(n_jobs=7, verbose=0)(
-        map(delayed(process_scene), ['stairs']))
+        map(delayed(process_scene), ['chess', 'fire', 'heads', 'office', 'pumpkin', 'redkitchen', 'stairs']))
 
     if opt.depth == 'rendered':
         os.chdir('..')

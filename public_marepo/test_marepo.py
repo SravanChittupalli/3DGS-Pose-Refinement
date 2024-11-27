@@ -212,7 +212,6 @@ if __name__ == '__main__':
                 predict_pose = network.get_pose(sc, intrinsics_B33.to(device))
                 predict_pose = predict_pose.float().cpu()
 
-            import pdb; pdb.set_trace()
             rErrs, tErrs, avg_batch_time, num_batches, \
                 pct10_5, pct5, pct2, pct1, \
                 pct500_10, pct50_5, pct25_2 \
