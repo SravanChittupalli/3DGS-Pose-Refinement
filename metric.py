@@ -1,4 +1,5 @@
 import math
+import json
 import time
 from pathlib import Path
 import cv2
@@ -7,6 +8,29 @@ import torch
 import pytorch3d.transforms as transforms
 from torch.cuda.amp import autocast
 
+def find_nearest_camera(query_pose, ref_poses, alpha=1.0, beta=1.0):
+    # Extract rotation and translation from query pose
+    R_query = query_pose[0, :3, :3]  # Shape: 3x3
+    t_query = query_pose[0, :3, 3]   # Shape: 3
+
+    # Extract rotation and translation from reference poses
+    R_ref = ref_poses[:, :3, :3]  # Shape: 4000x3x3
+    t_ref = ref_poses[:, :3, 3]   # Shape: 4000x3
+
+    # Compute rotation distance
+    R_rel = torch.matmul(R_ref, R_query.T)  # Relative rotation, Shape: 4000x3x3
+    trace_R_rel = torch.einsum('bii->b', R_rel)  # Trace of each relative rotation
+    d_rot = torch.acos((trace_R_rel - 1) / 2)  # Geodesic distance, Shape: 4000
+
+    # Compute translation distance
+    d_trans = torch.norm(t_ref - t_query, dim=1)  # Euclidean distance, Shape: 4000
+    
+    # Combine distances
+    d = alpha * d_rot + beta * d_trans  # Weighted distance, Shape: 4000
+
+    # Find index of the nearest camera
+    nearest_idx = torch.argmin(d).item()
+    return nearest_idx
 
 def compute_pose_error_new(out_pose, gt_pose_44):
     '''
@@ -123,7 +147,7 @@ def evaluate_batch(predict_pose, gt_pose_B44):
                                                         avg_batch_time, batch_start_time, num_batches)
         
 import sys
-def compute_error(rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_10, pct50_5, pct25_2): 
+def compute_error(rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_10, pct50_5, pct25_2, method, env): 
     # Compute median errors.
     median_rErr = np.median(rErrs)
     median_tErr = np.median(tErrs)
@@ -141,6 +165,32 @@ def compute_error(rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_
     pct50_5 = pct50_5 / total_frames * 100
     pct25_2 = pct25_2 / total_frames * 100
 
+    # Prepare the output data structure.
+    metrics = {
+        "total_frames": total_frames,
+        "accuracy": {
+            "5m_10deg": pct500_10,
+            "0.5m_5deg": pct50_5,
+            "0.25m_2deg": pct25_2,
+            "10cm_5deg": pct10_5,
+            "5cm_5deg": pct5,
+            "2cm_2deg": pct2,
+            "1cm_1deg": pct1
+        },
+        "median_error": {
+            "rotation_error_deg": median_rErr,
+            "translation_error_cm": median_tErr
+        },
+        "mean_error": {
+            "rotation_error_deg": mean_rErr,
+            "translation_error_cm": mean_tErr
+        }
+    }
+
+    # Save metrics to a JSON file.
+    with open("./outputs/metrics_output_{}_{}.json".format(env, method), "w") as json_file:
+        json.dump(metrics, json_file, indent=4)
+        
     output = (
     "===================================================\n"
     f"Tested {total_frames} frames.\n\n"

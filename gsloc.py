@@ -295,7 +295,8 @@ class CameraPoseRefinement:
         return torch.tensor(query_pose, dtype=torch.float32)
         
 
-    def inference(self, path_prefix, method="marepo"):
+    def inference(self, path_prefix, env, method="marepo"):
+        print("[INFO] Method: ", method)
 
         # List all available files in the directory
         all_files = [
@@ -328,6 +329,21 @@ class CameraPoseRefinement:
         query_gt_poses = []
         refined_poses = []
         total_frames = 0
+        
+        if method == "IR+mast3r":
+            if "test" in path_prefix:
+                reference_path_prefix = path_prefix.replace("test", "train")
+                
+                all_reference_poses = []
+                all_reference_poses_image_names = []
+                for reference_poses in os.listdir(reference_path_prefix+'/poses/'):
+                    pose_path = reference_path_prefix + '/poses/' + reference_poses
+                    pose = np.loadtxt(pose_path)
+                    pose_tensor = torch.tensor(pose, dtype=torch.float32).unsqueeze(0)
+                    all_reference_poses.append(pose_tensor)
+                    all_reference_poses_image_names.append(reference_poses.split('.')[0])
+                all_reference_poses = torch.cat(all_reference_poses, dim=0)
+                print("[INFO] There are a total of {} reference images for Image Retrival".format(len(all_reference_poses)))
 
         # Iterate over files in pairs (assuming sequential pairing)
         for i in range(len(all_files)):
@@ -343,16 +359,15 @@ class CameraPoseRefinement:
                 if method == "marepo":
                     refined_pose = gsloc.marepo_pose(query_data)
 
-                if method == "gsloc":
+                if method == "marepo+gsloc+mast3r":
                     refined_pose = gsloc.refine_pose(query_data)
 
-                if method == "mast3r":
-                    reference_data_name = all_files[i] #TODO
-                    reference_data = self.marepo_model.load_data(path_prefix, reference_data_name)
+                if method == "IR+mast3r":
+                    query_pose = query_data["pose"]
+                    idx = metric.find_nearest_camera(query_pose, all_reference_poses)
+                    reference_data_name = all_reference_poses_image_names[idx] #TODO
+                    reference_data = self.marepo_model.load_data(reference_path_prefix, reference_data_name)
                     refined_pose = gsloc.refine_pose_using_reference(query_data, reference_data)
-
-            # Optionally, print or save the result
-            # print(f"Refined pose between {query_data_name} and {reference_data_name}: {refined_pose}")
 
             query_gt_poses.append(query_data['pose'][0])
             refined_poses.append(refined_pose)
@@ -370,7 +385,7 @@ class CameraPoseRefinement:
                 
                 query_gt_poses = []
                 refined_poses = []
-                metric.compute_error(rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_10, pct50_5, pct25_2)
+                metric.compute_error(rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_10, pct50_5, pct25_2, method, env)
 
 
         if len(query_gt_poses) > 0 :
@@ -386,57 +401,47 @@ class CameraPoseRefinement:
                                                             pct500_10, pct50_5, pct25_2, num_batches)
             
         
-        metric.compute_error(rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_10, pct50_5, pct25_2)
+        metric.compute_error(rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_10, pct50_5, pct25_2, method, env)
         
         return rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_10, pct50_5, pct25_2
 
 
-# Example Usage
 if __name__ == "__main__":
-    # Paths to models and data
-    encoder_path = "public_marepo/ace_encoder_pretrained.pt"
-    head_network_path = "public_marepo/logs/pretrain/ace_models/7Scenes/7scenes_chess.pt"
-    transformer_path = "public_marepo/logs/paper_model/marepo/marepo.pt"
-    transformer_json = "public_marepo/transformer/config/nerf_focal_12T1R_256_homo.json"
-    scene_path = "public_marepo/datasets/pgt_7scenes_chess"
-    mast3r_model_path = "public_mast3r/checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth"
-    gs_model_path = 'public_scaffold_gs/outputs/chess/with_sfm'
-
-    # Initialize the pose refinement pipeline
-    gsloc = CameraPoseRefinement(
-        encoder_path,
-        head_network_path,
-        transformer_path,
-        transformer_json,
-        scene_path,
-        mast3r_model_path,
-        gs_model_path
-    )
-
-
-    # TODO: Iterate over all scenes.
-
-    env_list = ["chess", "fire", "heads", 'office', "pumpkin", "redkitchen", "stairs"]
-
-    path_prefix_list = [
-        "public_marepo/datasets/pgt_7scenes_chess/train",
-        "public_marepo/datasets/pgt_7scenes_fire/test",
-        "public_marepo/datasets/pgt_7scenes_heads/test",
-        "public_marepo/datasets/pgt_7scenes_office/test",
-        "public_marepo/datasets/pgt_7scenes_pumpkin/test",
-        "public_marepo/datasets/pgt_7scenes_redkitchen/test",
-        "public_marepo/datasets/pgt_7scenes_stairs/test"
-    ]
+    methods = ["marepo", "marepo+gsloc+mast3r", "IR+mast3r"]
+    env_list = ["chess", "fire", "heads", 'office', "pumpkin", "stairs"]
 
     # TODO: update 3dgs: path hard-coded at __init__?
-    for env in env_list:
-        path_prefix = "public_marepo/datasets/pgt_7scenes_{}/test".format(env)
-        head_network_path = "public_marepo/logs/pretrain/ace_models/7Scenes/7scenes_{}.pt".format(env)
-        scene_path = "public_marepo/datasets/pgt_7scenes_{}".format(env)
-        gs_model_path = 'public_scaffold_gs/outputs/{}/with_sfm'.format(env)
+    for method in methods:
+        for env in env_list:
+            evaluation_completed_scenes = os.listdir("./outputs")
+            if "metrics_output_{}_{}.json".format(env, method) in evaluation_completed_scenes:
+                print("[INFO] Already evaluated for scene {} and method {}. Skipping ... ".format(env, method))
+                continue
+            
+            # Paths to models and data
+            encoder_path = "public_marepo/ace_encoder_pretrained.pt"
+            head_network_path = "public_marepo/logs/pretrain/ace_models/7Scenes/7scenes_{}.pt".format(env)
+            transformer_path = "public_marepo/logs/paper_model/marepo/marepo.pt"
+            transformer_json = "public_marepo/transformer/config/nerf_focal_12T1R_256_homo.json"
+            scene_path = "public_marepo/datasets/pgt_7scenes_{}".format(env)
+            mast3r_model_path = "public_mast3r/checkpoints/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth"
+            gs_model_path = 'public_scaffold_gs/outputs/{}/with_sfm'.format(env)
+            path_prefix = "public_marepo/datasets/pgt_7scenes_{}/test".format(env)
 
-        gsloc.load_marepo(encoder_path=encoder_path, head_network_path=head_network_path, transformer_path=transformer_path, transformer_json=transformer_json, scene_path=scene_path)
+            # Initialize the pose refinement pipeline
+            gsloc = CameraPoseRefinement(
+                encoder_path,
+                head_network_path,
+                transformer_path,
+                transformer_json,
+                scene_path,
+                mast3r_model_path,
+                gs_model_path
+            )
 
-        # Refine pose given query and reference data names
-        gsloc.inference(path_prefix_list[0], method="gsloc")
+            gsloc.load_marepo(encoder_path=encoder_path, head_network_path=head_network_path, transformer_path=transformer_path, transformer_json=transformer_json, scene_path=scene_path)
+
+            # Refine pose given query and reference data names
+            print("[INFO] Evaluating {} Scene: Path used: {}".format(env, path_prefix))
+            gsloc.inference(path_prefix, env, method=method)
     

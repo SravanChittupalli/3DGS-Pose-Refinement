@@ -1,0 +1,20 @@
+{
+    "total_frames": 2000,
+    "accuracy": {
+        "5m_10deg": 100.0,
+        "0.5m_5deg": 100.0,
+        "0.25m_2deg": 100.0,
+        "10cm_5deg": 95.89999999999999,
+        "5cm_5deg": 83.3,
+        "2cm_2deg": 35.85,
+        "1cm_1deg": 8.200000000000001
+    },
+    "median_error": {
+        "rotation_error_deg": 0.3074522465467453,
+        "translation_error_cm": 2.5428755208849907
+    },
+    "mean_error": {
+        "rotation_error_deg": 0.3398058058582246,
+        "translation_error_cm": 3.390667789481813
+    }
+}
