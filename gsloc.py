@@ -190,20 +190,29 @@ class CameraPoseRefinement:
 
         return query_pose
     
-    def refine_pose(self, query_data):
+    def refine_pose(self, query_data, reference_data={}):
         """
         Refines the camera pose using feature matching and PnP. (GsLoc)
         """
+        
+        if len(reference_data.keys()) == 0:
+            # Extract intrinsic matrices from the loaded data
+            query_intrinsic_matrix = query_data['intrinsics']
 
-        # Extract intrinsic matrices from the loaded data
-        query_intrinsic_matrix = query_data['intrinsics']
+            # Extract intrinsic matrix to be used for PnP
+            intrinsic_matrix = query_intrinsic_matrix.numpy()[0]
+        
+            # Initial pose estimation using MARePo
+            initial_pose, _ = self.marepo_model.inference(query_data)
+            # print("Marepo Pose: ", initial_pose)
+        else:
+            # Extract intrinsic matrices from the loaded data
+            reference_intrinsic_matrix = reference_data['intrinsics']
 
-        # Extract intrinsic matrix to be used for PnP
-        intrinsic_matrix = query_intrinsic_matrix.numpy()[0]
-
-        # Initial pose estimation using MARePo
-        initial_pose, _ = self.marepo_model.inference(query_data)
-        # print("Marepo Pose: ", initial_pose)
+            # Extract intrinsic matrix to be used for PnP
+            intrinsic_matrix = reference_intrinsic_matrix.numpy()[0]
+            # Extract the reference global pose
+            initial_pose = reference_data['pose']  # Assuming reference_pose is a 3x4 matrix representing [R|t]
         
         ############## Gaussian Splat Render ###################
         
@@ -240,7 +249,7 @@ class CameraPoseRefinement:
         rvec, tvec = self.solve_pnp_ransac(query_kps_valid.astype(np.float32), reference_kps_3d.astype(np.float32), intrinsic_matrix)
         
         # Output Global Pose.
-        query_pose = self.global_pose(initial_pose, -rvec, -tvec/1000)
+        query_pose = self.global_pose(initial_pose, -rvec, -tvec)
         query_pose = np.vstack([query_pose, np.array([0,0,0,1])])
 
         return torch.tensor(query_pose, dtype=torch.float32)
@@ -330,7 +339,7 @@ class CameraPoseRefinement:
         refined_poses = []
         total_frames = 0
         
-        if method == "IR+mast3r":
+        if method == "IR+mast3r" or method=="gsloc+mast3r":
             if "test" in path_prefix:
                 reference_path_prefix = path_prefix.replace("test", "train")
                 
@@ -368,6 +377,13 @@ class CameraPoseRefinement:
                     reference_data_name = all_reference_poses_image_names[idx] #TODO
                     reference_data = self.marepo_model.load_data(reference_path_prefix, reference_data_name)
                     refined_pose = gsloc.refine_pose_using_reference(query_data, reference_data)
+                    
+                if method == "gsloc+mast3r":
+                    query_pose = query_data["pose"]
+                    idx = metric.find_nearest_camera(query_pose, all_reference_poses)
+                    reference_data_name = all_reference_poses_image_names[idx] #TODO
+                    reference_data = self.marepo_model.load_data(reference_path_prefix, reference_data_name)
+                    refined_pose = gsloc.refine_pose(query_data, reference_data)
 
             query_gt_poses.append(query_data['pose'][0])
             refined_poses.append(refined_pose)
@@ -407,13 +423,13 @@ class CameraPoseRefinement:
 
 
 if __name__ == "__main__":
-    methods = ["marepo", "marepo+gsloc+mast3r", "IR+mast3r"]
+    methods = ["marepo", "marepo+gsloc+mast3r", "IR+mast3r", "gsloc+mast3r"]
     env_list = ["chess", "fire", "heads", 'office', "pumpkin", "stairs"]
 
     # TODO: update 3dgs: path hard-coded at __init__?
-    for method in methods:
-        for env in env_list:
-            evaluation_completed_scenes = os.listdir("./outputs")
+    for env in env_list:
+        for method in methods:
+            evaluation_completed_scenes = os.listdir("./output_metrics")
             if "metrics_output_{}_{}.json".format(env, method) in evaluation_completed_scenes:
                 print("[INFO] Already evaluated for scene {} and method {}. Skipping ... ".format(env, method))
                 continue

@@ -188,7 +188,7 @@ def compute_error(rErrs, tErrs, total_frames, pct10_5, pct5, pct2, pct1, pct500_
     }
 
     # Save metrics to a JSON file.
-    with open("./outputs/metrics_output_{}_{}.json".format(env, method), "w") as json_file:
+    with open("./output_metrics/metrics_output_{}_{}.json".format(env, method), "w") as json_file:
         json.dump(metrics, json_file, indent=4)
         
     output = (
