@@ -1,6 +1,12 @@
-# **GSLoc Unofficial Implementation**
+# **Geometry-based Robust Camera Pose Refinement with 3D Gaussian Splatting** : [(Final Report)](https://github.com/SravanChittupalli/3DGS-Pose-Refinement)
 
-This repository contains an unofficial implementation of GSLoc. It includes modified versions of external modules and custom scripts for estimating camera pose using 3D Gaussian Splatting.
+This project was done as part of course project for 16-822 Geometry based Methods for Vision at CMU.  
+
+This repository contains an unofficial implementation of GSLoc paper [Arxiv](https://arxiv.org/abs/2408.11085). It includes modified versions of external modules and custom scripts for estimating camera pose using 3D Gaussian Splatting.
+
+## Method
+
+![Method](/vizualizations/gsloc.png)
 
 ---
 
@@ -9,8 +15,8 @@ This repository contains an unofficial implementation of GSLoc. It includes modi
 ### **1. Clone the Repository**
 
 ```bash
-git clone https://github.com/SravanChittupalli/GSLoc-Unofficial-Implementation.git
-cd GSLoc-Unofficial-Implementation
+git clone https://github.com/SravanChittupalli/3DGS-Pose-Refinement.git
+cd 3DGS-Pose-Refinement
 ```
 
 ---
@@ -37,6 +43,7 @@ cd GSLoc-Unofficial-Implementation
    conda list
    ```
 
+5. Additional Installation
    ```
    cd public_scaffold_gs
    pip install submodules/diff-gaussian-rasterization
@@ -57,23 +64,20 @@ The **_marepo_** method has been evaluated using multiple published datasets:
 
 - [Niantic Wayspots](https://nianticlabs.github.io/ace#dataset)
 - [Microsoft 7-Scenes](https://www.microsoft.com/en-us/research/project/rgb-d-dataset-7-scenes/)
-- [Stanford 12-Scenes](https://graphics.stanford.edu/projects/reloc/)
 
 We provide scripts in the `datasets` folder to automatically download and extract the data in a format that can be readily used by the **_marepo_** scripts.  
 The format is the same used by the DSAC* codebase; see [here](https://github.com/vislearn/dsacstar#data-structure) for details.
 
 > **Important: make sure you have checked the license terms of each dataset before using it.**
 
-### {7, 12}-Scenes:
+### 7-Scenes:
 
-You can use the `datasets/setup_{7,12}scenes.py` scripts to download the data. To download and prepare the datasets:
+You can use the `datasets/setup_7scenes.py` scripts to download the data. To download and prepare the datasets:
 
 ```bash
 cd datasets
 # Downloads the data to datasets/7scenes_{chess, fire, ...}
 ./setup_7scenes.py
-# Downloads the data to datasets/12scenes_{apt1_kitchen, ...}
-./setup_12scenes.py
 ```
 
 ### **3. Download and Use Checkpoints**
@@ -131,11 +135,15 @@ To run inference with **_marepo_** on a test scene, the following components are
 #### **Pre-trained Scaffold GS Models**
 
 All the scene models trained from SfM GT pose can be downloaded from the [Link](https://drive.google.com/drive/folders/1FC8MYRbnstP82FDq_KkoRoOOwfTKN7ip?usp=sharing).  
-Unzip `outputs.zip` and place the folder in `public_scaffold_gs` folder.
+Unzip `outputs.zip` and place the folder in `public_scaffold_gs` folder.  
+
+If you want to train the Scaffold-GS models yourselves, we have provided the COLMAP models scaled to match the scale of GT Poses given by the authors of 7-Scenes. [Link](https://drive.google.com/drive/folders/1wz1OSRqgorcxc5IoIJjA0i6GhDTmAOZ9?usp=sharing)
 
 ### **4. Run the Code**
 
-Run your scripts or modules as needed within the activated environment.
+Run your scripts or modules as needed within the activated environment.  
+
+`gsloc.py` is intended to run on the selected scenes in 7-Scenes and run pose refinement on MAREPO's initial guess and generate metrics. Metrics are stored under `output_metrics_v2`.  
 
 ```bash
 python gsloc.py
@@ -145,14 +153,19 @@ python gsloc.py
 
 **There might be some import errors. One of them might be from `public_scaffold_gs/gaussian_renderer/__init__.py` just change the 12th Line with your absolute library path.**
 
+## Visualizations
+
+![Visualization](/vizualizations/github_head_image.png)
+
 ---
 
 ## **Acknowledgments**
 
-This project includes two external modules that have been modified for this implementation. 
+This project includes three external modules that have been modified for this implementation. 
 
 - **`public_marepo`**: Based on [marepo](https://github.com/nianticlabs/marepo). 
 - **`public_mast3r`**: Based on [mast3r](https://github.com/naver/mast3r).
+- **`Scaffold GS`**: Based on [scaffold_gs](https://github.com/city-super/Scaffold-GS).
 
 The modules were downloaded and adapted for the purposes of this project. Original `.git` directories have been removed to integrate them into this repository seamlessly.
 
