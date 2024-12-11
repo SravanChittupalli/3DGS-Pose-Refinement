@@ -279,7 +279,7 @@ class CameraPoseRefinement:
         query_image = query_data['rgb'] # (480, 640, 3)
         reference_rgbd = {
             'rgb': reference_data['rgb'],
-            'depth': reference_data['depth']
+            'depth': reference_data['depth'] / 1000
         }
         query_image_shape = query_image.shape[:2]
 
@@ -298,7 +298,7 @@ class CameraPoseRefinement:
         rvec, tvec = self.solve_pnp_ransac(query_kps_valid.astype(np.float32), reference_kps_3d.astype(np.float32), intrinsic_matrix)
         
         # Output Global Pose.
-        query_pose = self.global_pose(reference_pose, -rvec, -tvec/1000)
+        query_pose = self.global_pose(reference_pose, -rvec, -tvec)
         query_pose = np.vstack([query_pose, np.array([0,0,0,1])])
 
         return torch.tensor(query_pose, dtype=torch.float32)
