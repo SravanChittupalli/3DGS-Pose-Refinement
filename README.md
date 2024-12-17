@@ -1,4 +1,4 @@
-# **Geometry-based Robust Camera Pose Refinement with 3D Gaussian Splatting** : [(Final Report)](https://github.com/SravanChittupalli/3DGS-Pose-Refinement)
+# **Geometry-based Robust Camera Pose Refinement with 3D Gaussian Splatting** : [(Final Report)](https://drive.google.com/file/d/17Ol0ls73b8Mw7C7Ec3Cg-oAKORLtKRU7/view?usp=sharing)
 
 This project was done as part of course project for 16-822 Geometry based Methods for Vision at CMU.  
 
